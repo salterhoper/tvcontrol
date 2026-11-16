@@ -49,18 +49,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.codesky.tvcontrol.remote.data.TvSocket
 import com.codesky.tvcontrol.remote.ui.components.KeyboardSheet
-import com.codesky.tvcontrol.remote.ui.components.SettingsSheet
 import com.codesky.tvcontrol.remote.ui.screens.AppsScreen
 import com.codesky.tvcontrol.remote.ui.screens.AssistantScreen
 import com.codesky.tvcontrol.remote.ui.screens.ConnectScreen
 import com.codesky.tvcontrol.remote.ui.screens.MediaScreen
 import com.codesky.tvcontrol.remote.ui.screens.RemotePadScreen
+import com.codesky.tvcontrol.remote.ui.settings.SettingsScreen
 
 private enum class Tab(val title: String, val icon: ImageVector) {
     Remote("Remote", Icons.Rounded.SettingsRemote),
     Apps("Apps", Icons.Rounded.Apps),
     Media("Media", Icons.Rounded.PlayCircle),
     Assistant("Assistant", Icons.Rounded.AutoAwesome),
+    Settings("Settings", Icons.Rounded.Tune),
 }
 
 @Composable
@@ -90,7 +91,6 @@ private fun RemoteHome(
 ) {
     var tab by rememberSaveable { mutableStateOf(Tab.Remote) }
     var showKeyboard by rememberSaveable { mutableStateOf(false) }
-    var showSettings by rememberSaveable { mutableStateOf(false) }
 
     val expanded = windowSizeClass.widthSizeClass != WindowWidthSizeClass.Compact
 
@@ -111,9 +111,6 @@ private fun RemoteHome(
                 actions = {
                     IconButton(onClick = { showKeyboard = true }) {
                         Icon(Icons.Rounded.Keyboard, contentDescription = "Keyboard")
-                    }
-                    IconButton(onClick = { showSettings = true }) {
-                        Icon(Icons.Rounded.Tune, contentDescription = "Settings")
                     }
                 },
             )
@@ -163,7 +160,8 @@ private fun RemoteHome(
                         Tab.Remote -> RemotePadScreen(vm, state)
                         Tab.Apps -> AppsScreen(vm, state)
                         Tab.Media -> MediaScreen(vm, state)
-                        Tab.Assistant -> AssistantScreen(vm, state)
+                        Tab.Assistant -> AssistantScreen(vm, state, onOpenSettings = { tab = Tab.Settings })
+                        Tab.Settings -> SettingsScreen(vm, state)
                     }
                 }
             }
@@ -175,15 +173,6 @@ private fun RemoteHome(
             state = state,
             onType = { text, mode, submit -> vm.typeText(text, mode, submit) },
             onDismiss = { showKeyboard = false },
-        )
-    }
-    if (showSettings) {
-        SettingsSheet(
-            state = state,
-            onToggleHaptics = vm::setHaptics,
-            onToggleDynamicColor = vm::setDynamicColor,
-            onDisconnect = { showSettings = false; vm.disconnect() },
-            onDismiss = { showSettings = false },
         )
     }
 }

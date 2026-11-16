@@ -8,6 +8,7 @@ import com.codesky.tvcontrol.remote.data.ActionResult
 import com.codesky.tvcontrol.remote.data.AppEntry
 import com.codesky.tvcontrol.remote.data.ApiException
 import com.codesky.tvcontrol.remote.data.AssistantRun
+import com.codesky.tvcontrol.remote.data.ChatMessage
 import com.codesky.tvcontrol.remote.data.DiscoveredTv
 import com.codesky.tvcontrol.remote.data.EngineState
 import com.codesky.tvcontrol.remote.data.Envelope
@@ -16,6 +17,7 @@ import com.codesky.tvcontrol.remote.data.RemoteJson
 import com.codesky.tvcontrol.remote.data.RemoteKey
 import com.codesky.tvcontrol.remote.data.ScreenSnapshot
 import com.codesky.tvcontrol.remote.data.Session
+import com.codesky.tvcontrol.remote.data.Settings
 import com.codesky.tvcontrol.remote.data.SessionStore
 import com.codesky.tvcontrol.remote.data.TextResult
 import com.codesky.tvcontrol.remote.data.TvClient
@@ -40,8 +42,11 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import java.util.UUID
 
 enum class Route { Connect, Remote }
+
+private val TERMINAL_RUN_STATES = setOf("done", "failed", "partial", "cancelled", "needs_input")
 
 data class UiState(
     val route: Route = Route.Connect,
@@ -63,7 +68,9 @@ data class UiState(
     val apps: List<AppEntry> = emptyList(),
     val appsLoading: Boolean = false,
     val nowPlaying: NowPlayingInfo? = null,
-    val run: AssistantRun? = null,
+    val settings: Settings? = null,
+    val chat: List<ChatMessage> = emptyList(),
+    val assistantRunning: Boolean = false,
     val volumePercent: Int? = null,
     val muted: Boolean = false,
     // settings
@@ -235,6 +242,9 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching { tvClient.nowPlaying() }.getOrNull()?.let { np ->
                     _state.update { it.copy(nowPlaying = np) }
                 }
+                runCatching { tvClient.settings() }.getOrNull()?.let { s ->
+                    _state.update { it.copy(settings = s) }
+                }
             } catch (e: ApiException) {
                 if (e.status == 401) expireSession() else emit(e.message ?: "The TV refused the request")
             } catch (e: Throwable) {
@@ -362,12 +372,30 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    fun runAssistant(utterance: String) {
+    // ------------------------------------------------------------- assistant chat
+
+    private var activeAssistantId: String? = null
+
+    fun sendAssistant(utterance: String) {
         val c = client ?: return
-        if (utterance.isBlank()) return
+        val text = utterance.trim()
+        if (text.isBlank()) return
+        val userMsg = ChatMessage(UUID.randomUUID().toString(), fromUser = true, text = text)
+        val pendingId = UUID.randomUUID().toString()
+        val pending = ChatMessage(
+            id = pendingId,
+            fromUser = false,
+            text = "",
+            run = AssistantRun(utterance = text, status = "running"),
+        )
+        activeAssistantId = pendingId
+        _state.update { it.copy(chat = it.chat + userMsg + pending, assistantRunning = true) }
         viewModelScope.launch {
-            runCatching { c.assist(utterance) }
-                .onFailure { guard(it) }
+            runCatching { c.assist(text) }
+                .onFailure { t ->
+                    if (t is ApiException && t.status == 401) expireSession()
+                    else failActiveAssistant(t.message ?: "The assistant could not start")
+                }
         }
     }
 
@@ -376,13 +404,44 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch { runCatching { c.cancelAssistant() } }
     }
 
-    fun clearRun() {
-        _state.update { it.copy(run = null) }
+    fun clearChat() {
+        activeAssistantId = null
+        _state.update { it.copy(chat = emptyList(), assistantRunning = false) }
+    }
+
+    private fun failActiveAssistant(message: String) {
+        val id = activeAssistantId ?: return
+        activeAssistantId = null
+        _state.update { st ->
+            st.copy(
+                assistantRunning = false,
+                chat = st.chat.map {
+                    if (it.id == id) it.copy(run = (it.run ?: AssistantRun()).copy(status = "failed", error = message))
+                    else it
+                },
+            )
+        }
     }
 
     fun artUrl(): String? = client?.artUrl()
 
-    // ------------------------------------------------------------- settings
+    // ------------------------------------------------------------- shared access for settings screens
+
+    /** The live client, for the self-contained settings screens. Null when not connected. */
+    val currentClient: TvClient? get() = client
+
+    fun toast(message: String) = emit(message)
+
+    fun refreshSettings() {
+        val c = client ?: return
+        viewModelScope.launch {
+            runCatching { c.settings() }.getOrNull()?.let { s -> _state.update { it.copy(settings = s) } }
+        }
+    }
+
+    fun setSettingsState(settings: Settings) {
+        _state.update { it.copy(settings = settings) }
+    }
 
     fun setHaptics(enabled: Boolean) {
         store.hapticsEnabled = enabled
@@ -444,7 +503,22 @@ class RemoteViewModel(app: Application) : AndroidViewModel(app) {
             }
             "assistant.run" -> {
                 data?.decode(AssistantRun.serializer())?.let { run ->
-                    _state.update { it.copy(run = run) }
+                    val id = activeAssistantId
+                    _state.update { st ->
+                        val chat = if (id != null && st.chat.any { it.id == id }) {
+                            st.chat.map {
+                                if (it.id == id) it.copy(text = run.say ?: it.text, run = run) else it
+                            }
+                        } else {
+                            // A run we didn't start locally (e.g. from another client) - show it.
+                            st.chat + ChatMessage(UUID.randomUUID().toString(), fromUser = false, text = run.say ?: "", run = run)
+                        }
+                        st.copy(chat = chat)
+                    }
+                    if (run.status in TERMINAL_RUN_STATES) {
+                        activeAssistantId = null
+                        _state.update { it.copy(assistantRunning = false) }
+                    }
                 }
             }
             "key.result" -> {

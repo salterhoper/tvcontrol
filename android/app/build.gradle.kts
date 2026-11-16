@@ -71,6 +71,14 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // The release build otherwise runs lintVital, which pulls extra lint
+        // tooling over the network (flaky, and unnecessary for a sideloaded
+        // APK). Keep lint available on demand, just not gating the release.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/*.kotlin_module",

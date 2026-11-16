@@ -33,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.codesky.tvcontrol.remote.data.RemoteKey
@@ -71,25 +72,23 @@ private fun Modifier.pointerInputRepeat(
     onDown: () -> Unit,
     onTrigger: () -> Unit,
     scope: kotlinx.coroutines.CoroutineScope,
-): Modifier = this.then(
-    androidx.compose.ui.input.pointer.pointerInput(enabled) {
-        if (!enabled) return@pointerInput
-        awaitEachGesture {
-            awaitFirstDown(requireUnconsumed = false)
-            onDown()
-            val job = scope.launch {
+): Modifier = this.pointerInput(enabled) {
+    if (!enabled) return@pointerInput
+    awaitEachGesture {
+        awaitFirstDown(requireUnconsumed = false)
+        onDown()
+        val job = scope.launch {
+            onTrigger()
+            delay(350)
+            while (isActive) {
                 onTrigger()
-                delay(350)
-                while (isActive) {
-                    onTrigger()
-                    delay(90)
-                }
+                delay(90)
             }
-            waitForUpOrCancellation()
-            job.cancel()
         }
-    },
-)
+        waitForUpOrCancellation()
+        job.cancel()
+    }
+}
 
 /** A single-tap control with a ripple. */
 @Composable

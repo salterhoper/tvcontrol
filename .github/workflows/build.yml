@@ -55,17 +55,19 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          # API 37 (the repo's default compileSdk) is a preview platform not
-          # downloadable on hosted runners, so CI compiles against the newest
-          # installable platform, android-36, via -PcompileSdk=36 below.
+          # The androidx dependencies require compileSdk 37, so we must build
+          # against android-37. Install it if the sdkmanager repo offers it;
+          # otherwise rely on the platform preinstalled on the runner image.
           yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
+          sdkmanager "platform-tools" "build-tools;36.0.0" || true
+          sdkmanager "platforms;android-37" || echo "android-37 not in sdkmanager repo; relying on a preinstalled platform"
+          echo "Installed platforms:"; ls "$ANDROID_HOME/platforms" 2>/dev/null || echo "(none)"
 
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APKs (TV + phone)
         working-directory: android
-        run: ./gradlew --no-daemon -PcompileSdk=36 :app:assembleDebug :phone:assembleDebug
+        run: ./gradlew --no-daemon :app:assembleDebug :phone:assembleDebug
 
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4

@@ -66,11 +66,11 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          # compileSdk 37 is a preview platform (see android.suppressUnsupportedCompileSdk
-          # in gradle.properties), so it lives in the canary channel (--channel=3),
-          # which also serves the stable platform-tools/build-tools.
-          yes | sdkmanager --channel=3 --licenses >/dev/null 2>&1 || true
-          sdkmanager --channel=3 "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+          # API 37 (the repo's default compileSdk) is a preview platform not
+          # downloadable on hosted runners, so CI compiles against the newest
+          # installable platform, android-36, via -PcompileSdk=36 below.
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
@@ -96,6 +96,7 @@ jobs:
         working-directory: android
         run: |
           ./gradlew --no-daemon \
+            -PcompileSdk=36 \
             -PversionName="${{ steps.ver.outputs.name }}" \
             -PversionCode="${{ steps.ver.outputs.code }}" \
             :app:assembleRelease :phone:assembleRelease

@@ -26,7 +26,9 @@ val overrideVersionCode = (project.findProperty("versionCode") as String?)?.toIn
 
 android {
     namespace = "com.codesky.tvcontrol.remote"
-    compileSdk = 37
+    // Overridable so CI can compile against an installable platform
+    // (e.g. -PcompileSdk=36); defaults to 37 for local/Android Studio builds.
+    compileSdk = (project.findProperty("compileSdk") as String?)?.toIntOrNull() ?: 37
 
     defaultConfig {
         applicationId = "com.codesky.tvcontrol.remote"

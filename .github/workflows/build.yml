@@ -55,16 +55,17 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          # compileSdk 37 is a preview platform (android.suppressUnsupportedCompileSdk),
-          # so install from the canary channel, which also serves stable packages.
-          yes | sdkmanager --channel=3 --licenses >/dev/null 2>&1 || true
-          sdkmanager --channel=3 "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+          # API 37 (the repo's default compileSdk) is a preview platform not
+          # downloadable on hosted runners, so CI compiles against the newest
+          # installable platform, android-36, via -PcompileSdk=36 below.
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "platform-tools" "platforms;android-36" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build debug APKs (TV + phone)
         working-directory: android
-        run: ./gradlew --no-daemon :app:assembleDebug :phone:assembleDebug
+        run: ./gradlew --no-daemon -PcompileSdk=36 :app:assembleDebug :phone:assembleDebug
 
       - name: Upload debug APKs
         uses: actions/upload-artifact@v4

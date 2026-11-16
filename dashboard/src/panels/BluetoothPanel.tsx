@@ -8,7 +8,6 @@ import {
   IconSignal,
   IconTrash,
   IconTv,
-  IconX,
 } from "../components/icons";
 import { Sheet } from "../components/ui";
 import type { RemoteState } from "../useRemote";

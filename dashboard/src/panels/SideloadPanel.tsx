@@ -8,7 +8,6 @@ import {
   IconFile,
   IconHardDrive,
   IconRefresh,
-  IconCheck,
 } from "../components/icons";
 import { Sheet } from "../components/ui";
 import type { RemoteState } from "../useRemote";

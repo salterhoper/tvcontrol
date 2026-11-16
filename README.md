@@ -10,23 +10,42 @@ that turns "open Netflix and search for Dune" into real button presses.
 
 ```
 ┌──────────────────────┐   Wi-Fi / LAN   ┌─────────────────────────────┐
-│  Phone / tablet /    │ ───────────────▶│  Android TV                │
-│  laptop browser      │  HTTP + WS      │  TV Control (background)    │
-│  (the dashboard)     │◀─────────────── │  ├ accessibility engine     │
-└──────────────────────┘                 │  ├ LAN server (REST + WS)   │
-                                         │  └ assistant (cloud LLM)    │
+│  Phone remote app    │ ───────────────▶│  Android TV                │
+│  (native, Compose)   │  HTTP + WS      │  TV Control (background)    │
+│  — or any browser,   │◀─────────────── │  ├ accessibility engine     │
+│    the web dashboard │                 │  ├ LAN server (REST + WS)   │
+└──────────────────────┘                 │  └ assistant (cloud LLM)    │
                                          └─────────────────────────────┘
 ```
+
+There are now **two ways to drive the TV**: the native **phone app** (`android/phone`,
+Jetpack Compose + Material 3, Material icons, auto-discovers the TV over mDNS) and the
+**web dashboard** served by the TV itself. Both speak the exact same REST + WebSocket
+contract, so you can use whichever you like.
 
 ## What is in this repo
 
 | Path | What it is |
 | --- | --- |
-| `android/` | The Android TV app: Kotlin, no Compose, min SDK 26. Foreground service + accessibility service + embedded HTTP/WebSocket server. |
-| `dashboard/` | The web remote/assistant UI (Vite + React + TypeScript). It is compiled **into the APK** and served by the TV, so nothing has to be hosted anywhere. |
-| `scripts/build-dashboard.sh` | Builds the dashboard into the APK's assets. Wired into Gradle, so it runs on its own. |
+| `android/app/` | The Android **TV** app (the server): Kotlin, no Compose, min SDK 26. Foreground service + accessibility service + embedded HTTP/WebSocket server. |
+| `android/phone/` | The native **phone/tablet remote** app (the client): Jetpack Compose + Material 3, Material icons, min SDK 26. Finds the TV over mDNS, pairs with the PIN, and drives it over the same LAN API. |
+| `dashboard/` | The web remote/assistant UI (Vite + React + TypeScript). It is compiled **into the TV APK** and served by the TV, so nothing has to be hosted anywhere. |
+| `scripts/build-dashboard.sh` | Builds the dashboard into the TV APK's assets. Wired into Gradle, so it runs on its own. |
+| `.github/workflows/` | CI: `build.yml` typechecks the dashboard and builds both debug APKs on every push/PR; `release.yml` publishes both signed APKs to a GitHub Release when you push a `v*` tag. |
 | `docs/ARCHITECTURE.md` | How the pieces fit together, the decisions behind them, and the honest limits. |
 | `docs/API.md` | The REST + WebSocket contract the TV exposes on the LAN. |
+
+## Install from a release (no toolchain needed)
+
+Every tagged release on GitHub ships two APKs (built and attached by CI):
+
+| APK | Install it on |
+| --- | --- |
+| `tvcontrol-tv-<ver>.apk` | the **Android TV** (the server that runs in the background) |
+| `tvcontrol-remote-<ver>.apk` | your **phone or tablet** (the native remote) |
+
+Put the TV APK on the television, open it, turn on the accessibility engine; put the remote
+APK on your phone, open it, pick the TV it finds (or type the address), and pair with the PIN.
 
 ## Build and install
 
@@ -34,16 +53,28 @@ Requirements: a **full JDK 17+** (not a JRE-only install - Gradle needs `javac`)
 SDK with platform 37, and Node or Bun for the dashboard. The Gradle wrapper brings its own Gradle.
 
 ```bash
-# 1. Build the app (this also builds the dashboard into the APK)
 cd android
-JAVA_HOME=/opt/android-studio/jbr ./gradlew assembleDebug   # any full JDK 17+ works
 
-# 2. Install on the TV
-adb connect <tv-ip>:5555      # if you have not already
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+# TV app (this also builds the web dashboard into the APK)
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :app:assembleDebug     # any full JDK 17+ works
+
+# Phone remote app
+JAVA_HOME=/opt/android-studio/jbr ./gradlew :phone:assembleDebug
+
+# …or both at once
+./gradlew :app:assembleDebug :phone:assembleDebug
 ```
 
-`scripts/build-apk.sh` does the same thing and picks a usable JDK for you (handy when the
+Install the TV app on the TV and the remote on your phone:
+
+```bash
+adb connect <tv-ip>:5555                                           # the TV, over Wi-Fi
+adb -s <tv-ip>:5555 install -r app/build/outputs/apk/debug/app-debug.apk
+
+adb -s <phone-serial> install -r phone/build/outputs/apk/debug/phone-debug.apk   # your phone
+```
+
+`scripts/build-apk.sh` builds the TV APK and picks a usable JDK for you (handy when the
 system's `java` is a JRE without `javac`).
 
 Then, **on the TV**:
@@ -53,7 +84,9 @@ Then, **on the TV**:
 2. Open **Settings → Accessibility → TV Control remote** and turn it on. Without this, navigation,
    OK, Back/Home and typing cannot work (volume and playback still do).
 
-Then, **on your phone**: scan the QR code, or open that address in a browser.
+Then, **on your phone**: open the **TV Remote** app and pick the TV it discovers (or type the
+address), then enter the PIN. No app? Scan the QR code or open the address in any browser for the
+web dashboard instead.
 
 ## Using it
 
@@ -79,15 +112,38 @@ Then, **on your phone**: scan the QR code, or open that address in a browser.
 cd dashboard && npm install && npm run dev
 # open http://localhost:5173?host=<tv-ip>:8787
 
-# Rebuild just the APK after changing Kotlin
-cd android && ./gradlew assembleDebug
+# Rebuild just an APK after changing Kotlin
+cd android && ./gradlew :app:assembleDebug     # TV app
+cd android && ./gradlew :phone:assembleDebug   # phone remote
 
 # Typecheck the dashboard
 cd dashboard && npm run typecheck
 ```
 
-Both builds need the same full JDK; `JAVA_HOME` must point at one when you call
-`./gradlew` directly.
+The phone app points at a TV by mDNS discovery; to develop against a specific one, just type
+its `ip:port` on the connect screen. Both Gradle builds need the same full JDK; `JAVA_HOME`
+must point at one when you call `./gradlew` directly.
+
+## Releasing
+
+CI lives in `.github/workflows`:
+
+- **`build.yml`** runs on every push and PR: it typechecks the dashboard and builds both debug
+  APKs, so a break is caught early.
+- **`release.yml`** runs when you push a tag like `v0.2.0` (or from the Actions tab by hand). It
+  builds both APKs with the tag's version, then publishes them to a GitHub Release as
+  `tvcontrol-tv-<ver>.apk` and `tvcontrol-remote-<ver>.apk`.
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0      # cut a release
+```
+
+Signing is optional. Set the repository secrets `ANDROID_KEYSTORE_BASE64`,
+`ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS` and `ANDROID_KEY_PASSWORD` to sign the release
+APKs with your own key; without them the release APKs are debug-signed, which still installs fine
+for sideloading. The same four values work locally through an `android/keystore.properties` file
+(git-ignored) with keys `RELEASE_STORE_FILE`, `RELEASE_STORE_PASSWORD`, `RELEASE_KEY_ALIAS`,
+`RELEASE_KEY_PASSWORD`.
 
 ## What it deliberately does not do
 

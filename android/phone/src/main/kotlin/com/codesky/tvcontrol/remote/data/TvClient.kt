@@ -5,15 +5,21 @@ import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
+import io.ktor.client.request.forms.MultiPartFormDataContent
+import io.ktor.client.request.forms.formData
 import io.ktor.client.request.header
 import io.ktor.client.request.get
 import io.ktor.client.request.post
+import io.ktor.client.request.request
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
+import io.ktor.http.Headers
 import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
 import io.ktor.http.contentType
+import io.ktor.http.encodeURLParameter
 import io.ktor.http.isSuccess
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.websocket.Frame
@@ -108,15 +114,12 @@ class TvClient(
         body: JsonElement? = null,
         deserialize: (String) -> T,
     ): T {
-        val res = if (method == "GET") {
-            http.get("$origin$path") { header(HttpHeaders.Authorization, "Bearer $token") }
-        } else {
-            http.post("$origin$path") {
-                header(HttpHeaders.Authorization, "Bearer $token")
-                if (body != null) {
-                    contentType(ContentType.Application.Json)
-                    setBody(body)
-                }
+        val res = http.request("$origin$path") {
+            this.method = HttpMethod.parse(method)
+            header(HttpHeaders.Authorization, "Bearer $token")
+            if (body != null) {
+                contentType(ContentType.Application.Json)
+                setBody(body)
             }
         }
         val text = res.bodyAsText()
@@ -200,6 +203,134 @@ class TvClient(
 
     suspend fun cancelAssistant() {
         request<Unit>("/api/assistant/cancel", "POST", buildJsonObject {}) { }
+    }
+
+    // -------- settings & pairing
+
+    suspend fun settings(): Settings =
+        request("/api/settings", "GET") { RemoteJson.decodeFromString(Settings.serializer(), it) }
+
+    suspend fun updateSettings(patch: JsonObject): Settings =
+        request("/api/settings", "PUT", patch) { RemoteJson.decodeFromString(Settings.serializer(), it) }
+
+    suspend fun rotatePin(): Settings =
+        request("/api/settings/pin/rotate", "POST", buildJsonObject {}) { RemoteJson.decodeFromString(Settings.serializer(), it) }
+
+    suspend fun revokeDevices() {
+        request<Unit>("/api/settings/devices/revoke", "POST", buildJsonObject {}) { }
+    }
+
+    // -------- diagnostics & engine
+
+    suspend fun diagnostics(): DiagnosticsReport =
+        request("/api/diagnostics", "GET") { RemoteJson.decodeFromString(DiagnosticsReport.serializer(), it) }
+
+    suspend fun enableEngine(): EnableResult =
+        request("/api/engine/enable", "POST", buildJsonObject {}) { RemoteJson.decodeFromString(EnableResult.serializer(), it) }
+
+    // -------- ad blocking
+
+    suspend fun adblock(probe: Boolean = false): AdBlockState =
+        request("/api/adblock${if (probe) "?probe=1" else ""}", "GET") { RemoteJson.decodeFromString(AdBlockState.serializer(), it) }
+
+    suspend fun setAdblock(enabled: Boolean, hostname: String? = null): AdBlockState =
+        request(
+            "/api/adblock", "POST",
+            buildJsonObject { put("enabled", enabled); if (hostname != null) put("hostname", hostname) },
+        ) { RemoteJson.decodeFromString(AdBlockState.serializer(), it) }
+
+    // -------- proxy
+
+    suspend fun proxy(): ProxyState =
+        request("/api/proxy", "GET") { RemoteJson.decodeFromString(ProxyState.serializer(), it) }
+
+    suspend fun setProxyEnabled(enabled: Boolean, id: String? = null): ProxyState =
+        request("/api/proxy", "POST", buildJsonObject { put("enabled", enabled); if (id != null) put("id", id) }) {
+            RemoteJson.decodeFromString(ProxyState.serializer(), it)
+        }
+
+    suspend fun saveProxyServer(server: JsonObject): ProxyState =
+        request("/api/proxy/servers", "POST", server) { RemoteJson.decodeFromString(ProxyState.serializer(), it) }
+
+    suspend fun deleteProxyServer(id: String): ProxyState =
+        request("/api/proxy/servers/${id.encodeURLParameter()}", "DELETE") { RemoteJson.decodeFromString(ProxyState.serializer(), it) }
+
+    suspend fun testProxyServer(id: String): ProxyState =
+        request("/api/proxy/servers/${id.encodeURLParameter()}/test", "POST", buildJsonObject {}) {
+            RemoteJson.decodeFromString(ProxyState.serializer(), it)
+        }
+
+    suspend fun selectProxy(id: String): ProxyState =
+        request("/api/proxy/active", "POST", buildJsonObject { put("id", id) }) { RemoteJson.decodeFromString(ProxyState.serializer(), it) }
+
+    suspend fun setProxyFailOpen(failOpen: Boolean): ProxyState =
+        request("/api/proxy/options", "POST", buildJsonObject { put("failOpen", failOpen) }) { RemoteJson.decodeFromString(ProxyState.serializer(), it) }
+
+    // -------- root
+
+    suspend fun rootCheck(): RootReport =
+        request("/api/root", "GET") { RemoteJson.decodeFromString(RootReport.serializer(), it) }
+
+    // -------- bluetooth
+
+    suspend fun bluetooth(): BluetoothStatusDto =
+        request("/api/bluetooth", "GET") { RemoteJson.decodeFromString(BluetoothStatusDto.serializer(), it) }
+
+    suspend fun setBluetoothState(enabled: Boolean): BluetoothActionResult =
+        request("/api/bluetooth/state", "POST", buildJsonObject { put("enabled", enabled) }) {
+            RemoteJson.decodeFromString(BluetoothActionResult.serializer(), it)
+        }
+
+    suspend fun scanBluetooth(action: String): BluetoothActionResult =
+        request("/api/bluetooth/scan", "POST", buildJsonObject { put("action", action) }) {
+            RemoteJson.decodeFromString(BluetoothActionResult.serializer(), it)
+        }
+
+    /** path is one of pair / connect / disconnect / unpair. */
+    suspend fun bluetoothDeviceAction(path: String, address: String): BluetoothActionResult =
+        request("/api/bluetooth/$path", "POST", buildJsonObject { put("address", address) }) {
+            RemoteJson.decodeFromString(BluetoothActionResult.serializer(), it)
+        }
+
+    suspend fun launchTvPairing(): BluetoothActionResult =
+        request("/api/bluetooth/launch-pairing", "POST", buildJsonObject {}) {
+            RemoteJson.decodeFromString(BluetoothActionResult.serializer(), it)
+        }
+
+    // -------- files & sideload
+
+    suspend fun files(): StorageInfo =
+        request("/api/files", "GET") { RemoteJson.decodeFromString(StorageInfo.serializer(), it) }
+
+    suspend fun installApk(name: String): FileActionResult =
+        request("/api/files/install", "POST", buildJsonObject { put("name", name) }) {
+            RemoteJson.decodeFromString(FileActionResult.serializer(), it)
+        }
+
+    suspend fun deleteFile(name: String) {
+        request<Unit>("/api/files?name=${name.encodeURLParameter()}", "DELETE") { }
+    }
+
+    suspend fun uploadFile(bytes: ByteArray, filename: String, install: Boolean): FileActionResult {
+        val res = http.post("$origin/api/files/upload${if (install) "?install=1" else ""}") {
+            header(HttpHeaders.Authorization, "Bearer $token")
+            setBody(
+                MultiPartFormDataContent(
+                    formData {
+                        append(
+                            "file", bytes,
+                            Headers.build {
+                                append(HttpHeaders.ContentDisposition, "filename=\"$filename\"")
+                                append(HttpHeaders.ContentType, "application/octet-stream")
+                            },
+                        )
+                    },
+                ),
+            )
+        }
+        val text = res.bodyAsText()
+        if (!res.status.isSuccess()) throw res.toApiException(text)
+        return RemoteJson.decodeFromString(FileActionResult.serializer(), text)
     }
 
     fun artUrl(): String = "$origin/api/media/art?t=${System.currentTimeMillis()}&token=$token"

@@ -1,6 +1,7 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
 package com.codesky.tvcontrol.remote.ui.screens
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,11 +12,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Send
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -23,203 +26,294 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.HourglassEmpty
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.codesky.tvcontrol.remote.data.AssistantRun
 import com.codesky.tvcontrol.remote.data.AssistantStep
+import com.codesky.tvcontrol.remote.data.ChatMessage
 import com.codesky.tvcontrol.remote.ui.RemoteViewModel
 import com.codesky.tvcontrol.remote.ui.UiState
+import kotlinx.coroutines.launch
 
-private val suggestions = listOf(
+private val SUGGESTIONS = listOf(
     "Open YouTube and search for lofi beats",
     "Go to the home screen",
-    "Open Netflix",
-    "Scroll down",
+    "Turn the volume down",
+    "What's on the screen right now?",
 )
 
 @Composable
-fun AssistantScreen(vm: RemoteViewModel, state: UiState) {
-    var utterance by rememberSaveable { mutableStateOf("") }
-    val run = state.run
-    val running = run?.status == "running"
+fun AssistantScreen(
+    vm: RemoteViewModel,
+    state: UiState,
+    onOpenSettings: () -> Unit,
+) {
+    var input by rememberSaveable { mutableStateOf("") }
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
+
+    val llm = state.settings?.llm
+    val localModel = llm != null &&
+        Regex("localhost|127\\.0\\.0\\.1|192\\.168\\.|http://10\\.").containsMatchIn(llm.baseUrl)
+    val configured = llm == null || llm.apiKeyConfigured || localModel // null = settings not loaded yet; don't nag
 
     fun send(text: String) {
         if (text.isBlank()) return
-        vm.runAssistant(text)
-        utterance = ""
+        vm.sendAssistant(text)
+        input = ""
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp),
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    LaunchedEffect(state.chat.size) {
+        if (state.chat.isNotEmpty()) {
+            scope.launch { listState.animateScrollToItem(state.chat.size - 1) }
+        }
+    }
+
+    Column(Modifier.fillMaxSize()) {
+        // Header
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             Icon(Icons.Rounded.AutoAwesome, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-            Text("Assistant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.size(8.dp))
+            Text("Assistant", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            if (state.chat.isNotEmpty()) {
+                TextButton(onClick = { vm.clearChat() }) { Text("New chat") }
+            }
+        }
+
+        if (!configured) {
+            ConfigBanner(onOpenSettings)
+        }
+
+        Box(Modifier.weight(1f).fillMaxWidth()) {
+            if (state.chat.isEmpty()) {
+                EmptyState(onPick = { send(it) })
+            } else {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    items(state.chat, key = { it.id }) { msg -> ChatBubble(msg) }
+                }
+            }
+        }
+
+        // Current-TV context
+        val ctx = buildString {
+            append(state.screen?.app ?: "TV")
+            state.screen?.focus?.text?.takeIf { it.isNotBlank() }?.let { append(" · ").append(it) }
         }
         Text(
-            "Describe what you want. The assistant reads the TV screen and presses the buttons for you.",
-            style = MaterialTheme.typography.bodyMedium,
+            "Sees: $ctx",
+            style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(top = 4.dp),
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 2.dp),
         )
 
-        Spacer(Modifier.height(16.dp))
-
-        OutlinedTextField(
-            value = utterance,
-            onValueChange = { utterance = it },
-            label = { Text("Ask the TV…") },
-            trailingIcon = {
-                IconButton(onClick = { send(utterance) }, enabled = utterance.isNotBlank() && !running) {
-                    Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send")
-                }
-            },
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
-            keyboardActions = KeyboardActions(onSend = { send(utterance) }),
-            modifier = Modifier.fillMaxWidth(),
-        )
-
-        Spacer(Modifier.height(10.dp))
+        // Input bar
         Row(
-            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            suggestions.forEach { s ->
-                AssistChip(onClick = { send(s) }, label = { Text(s) }, enabled = !running)
-            }
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        if (run != null) {
-            RunCard(
-                run = run,
-                running = running,
-                onCancel = { vm.cancelAssistant() },
-                onClear = { vm.clearRun() },
+            OutlinedTextField(
+                value = input,
+                onValueChange = { input = it },
+                placeholder = { Text("Ask the TV to do something…") },
+                maxLines = 4,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { send(input) }),
+                modifier = Modifier.weight(1f),
             )
-        } else {
-            Box(Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
-                Text(
-                    "Your request and its steps will show up here.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+            if (state.assistantRunning) {
+                FilledIconButton(onClick = { vm.cancelAssistant() }) {
+                    Icon(Icons.Rounded.Stop, contentDescription = "Stop")
+                }
+            } else {
+                FilledIconButton(onClick = { send(input) }, enabled = input.isNotBlank()) {
+                    Icon(Icons.AutoMirrored.Rounded.Send, contentDescription = "Send")
+                }
             }
         }
     }
 }
 
 @Composable
-private fun RunCard(
-    run: AssistantRun,
-    running: Boolean,
-    onCancel: () -> Unit,
-    onClear: () -> Unit,
-) {
+private fun ConfigBanner(onOpenSettings: () -> Unit) {
     Surface(
-        shape = RoundedCornerShape(20.dp),
-        color = MaterialTheme.colorScheme.surfaceContainer,
-        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.tertiaryContainer,
+        contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                if (running) {
-                    CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
-                    Spacer(Modifier.size(10.dp))
-                }
-                Text(
-                    run.utterance.ifBlank { "Assistant" },
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f),
-                )
-                StatusBadge(run.status)
-            }
-
-            if (!run.say.isNullOrBlank()) {
-                Spacer(Modifier.height(10.dp))
-                Text(run.say, style = MaterialTheme.typography.bodyMedium)
-            }
-            if (!run.error.isNullOrBlank()) {
-                Spacer(Modifier.height(8.dp))
-                Text(run.error, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
-            }
-
-            if (run.steps.isNotEmpty()) {
-                Spacer(Modifier.height(14.dp))
-                run.steps.forEach { StepRow(it) }
-            }
-
-            Spacer(Modifier.height(14.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (running) {
-                    OutlinedButton(onClick = onCancel) { Text("Stop") }
-                } else {
-                    OutlinedButton(onClick = onClear) { Text("Clear") }
-                }
+        Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                "No model is configured. Add a provider, model and API key in Settings - or point the base URL at a model server on your network.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.size(8.dp))
+            TextButton(onClick = onOpenSettings) {
+                Icon(Icons.Rounded.Tune, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.size(4.dp))
+                Text("Settings")
             }
         }
     }
 }
 
 @Composable
-private fun StepRow(step: AssistantStep) {
+private fun EmptyState(onPick: (String) -> Unit) {
+    Column(
+        modifier = Modifier.fillMaxSize().padding(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(
+            Icons.Rounded.AutoAwesome,
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.primary,
+            modifier = Modifier.size(44.dp),
+        )
+        Spacer(Modifier.height(12.dp))
+        Text("Ask the TV anything", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text(
+            "The assistant reads the screen, plans button presses and performs them. It only does what you could with the remote.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(top = 6.dp),
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        )
+        Spacer(Modifier.size(20.dp))
+        SUGGESTIONS.forEach { s ->
+            AssistChip(
+                onClick = { onPick(s) },
+                label = { Text(s) },
+                modifier = Modifier.padding(vertical = 4.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChatBubble(msg: ChatMessage) {
+    if (msg.fromUser) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                contentColor = MaterialTheme.colorScheme.onPrimary,
+                modifier = Modifier.widthIn(max = 320.dp),
+            ) {
+                Text(msg.text, modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp))
+            }
+        }
+    } else {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
+            Surface(
+                shape = RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 4.dp, bottomEnd = 18.dp),
+                color = MaterialTheme.colorScheme.surfaceContainerHigh,
+                modifier = Modifier.widthIn(max = 360.dp),
+            ) {
+                AssistantBody(msg.run, msg.text)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AssistantBody(run: AssistantRun?, text: String) {
+    Column(Modifier.padding(14.dp)) {
+        val running = run?.status == "running"
+        if (text.isNotBlank()) {
+            Text(text, style = MaterialTheme.typography.bodyMedium)
+        } else if (running) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.size(8.dp))
+                Text("Thinking…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+
+        val steps = run?.steps.orEmpty()
+        if (steps.isNotEmpty()) {
+            Spacer(Modifier.size(10.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                steps.forEach { StepChip(it) }
+            }
+        }
+
+        if (!run?.error.isNullOrBlank()) {
+            Spacer(Modifier.size(8.dp))
+            Text(run!!.error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+        }
+
+        if (running && steps.isNotEmpty()) {
+            Spacer(Modifier.size(8.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.size(6.dp))
+                Text("Working…", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
+
+@Composable
+private fun StepChip(step: AssistantStep) {
     val (icon, tint) = when (step.status) {
         "ok" -> Icons.Rounded.CheckCircle to MaterialTheme.colorScheme.primary
         "failed" -> Icons.Rounded.ErrorOutline to MaterialTheme.colorScheme.error
         "running" -> Icons.Rounded.HourglassEmpty to MaterialTheme.colorScheme.tertiary
         else -> Icons.Rounded.RadioButtonUnchecked to MaterialTheme.colorScheme.onSurfaceVariant
     }
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    Surface(
+        shape = RoundedCornerShape(10.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
     ) {
-        Icon(icon, contentDescription = step.status, tint = tint, modifier = Modifier.size(20.dp))
-        Column(Modifier.weight(1f)) {
-            Text(step.detail ?: step.action, style = MaterialTheme.typography.bodyMedium)
-            if (!step.note.isNullOrBlank()) {
-                Text(step.note, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(icon, contentDescription = step.status, tint = tint, modifier = Modifier.size(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    step.detail ?: step.action,
+                    style = MaterialTheme.typography.labelLarge,
+                )
+                if (!step.note.isNullOrBlank()) {
+                    Text(step.note, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
             }
         }
     }
 }
 
-@Composable
-private fun StatusBadge(status: String) {
-    val color: Color = when (status) {
-        "done" -> MaterialTheme.colorScheme.primary
-        "failed", "cancelled" -> MaterialTheme.colorScheme.error
-        "partial", "needs_input" -> MaterialTheme.colorScheme.tertiary
-        else -> MaterialTheme.colorScheme.secondary
-    }
-    Surface(shape = RoundedCornerShape(50), color = color.copy(alpha = 0.18f), contentColor = color) {
-        Text(
-            status.replace('_', ' '),
-            style = MaterialTheme.typography.labelSmall,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-        )
-    }
-}

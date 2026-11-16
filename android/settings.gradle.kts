@@ -29,3 +29,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "TvControl"
 include(":app")
+include(":phone")

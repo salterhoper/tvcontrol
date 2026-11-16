@@ -1,18 +1,50 @@
+import java.io.FileInputStream
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.serialization)
 }
 
+/**
+ * Release signing. In CI the keystore comes from env vars (see
+ * .github/workflows/release.yml); locally drop a `keystore.properties` at
+ * android/. With neither present, the release build is signed with the debug
+ * key so the APK still installs on a TV for sideloading.
+ */
+val keystoreProps = Properties().apply {
+    val f = rootProject.file("keystore.properties")
+    if (f.exists()) FileInputStream(f).use { load(it) }
+}
+fun signingProp(name: String): String? = keystoreProps.getProperty(name) ?: System.getenv(name)
+
+val overrideVersionName = (project.findProperty("versionName") as String?)?.takeIf { it.isNotBlank() }
+val overrideVersionCode = (project.findProperty("versionCode") as String?)?.toIntOrNull()
+
 android {
     namespace = "com.codesky.tvcontrol"
-    compileSdk = 37
+    // Overridable so CI can compile against an installable platform
+    // (e.g. -PcompileSdk=36); defaults to 37 for local/Android Studio builds.
+    compileSdk = (project.findProperty("compileSdk") as String?)?.toIntOrNull() ?: 37
 
     defaultConfig {
         applicationId = "com.codesky.tvcontrol"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = overrideVersionCode ?: 1
+        versionName = overrideVersionName ?: "0.1.0"
+    }
+
+    val releaseStore = signingProp("RELEASE_STORE_FILE")
+    signingConfigs {
+        if (releaseStore != null && file(releaseStore).exists()) {
+            create("release") {
+                storeFile = file(releaseStore)
+                storePassword = signingProp("RELEASE_STORE_PASSWORD")
+                keyAlias = signingProp("RELEASE_KEY_ALIAS")
+                keyPassword = signingProp("RELEASE_KEY_PASSWORD")
+            }
+        }
     }
 
     buildTypes {
@@ -22,6 +54,7 @@ android {
         }
         release {
             isMinifyEnabled = false
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",

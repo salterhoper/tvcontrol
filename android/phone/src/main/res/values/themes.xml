@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <!--
+      Base platform theme used before Compose draws its first frame. It only sets
+      the window background (so there is no white flash on launch) and lets the
+      system bars be drawn by Compose's edge-to-edge handling. All real colours
+      come from the Compose Material 3 theme.
+    -->
+    <style name="Theme.TvRemote" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/brand_bg</item>
+        <item name="android:colorBackground">@color/brand_bg</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+    </style>
+</resources>

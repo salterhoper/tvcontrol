@@ -55,8 +55,10 @@ jobs:
 
       - name: Install SDK packages
         run: |
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "platform-tools" "platforms;android-37" "build-tools;36.0.0"
+          # compileSdk 37 is a preview platform (android.suppressUnsupportedCompileSdk),
+          # so install from the canary channel, which also serves stable packages.
+          yes | sdkmanager --channel=3 --licenses >/dev/null 2>&1 || true
+          sdkmanager --channel=3 "platform-tools" "platforms;android-37" "build-tools;36.0.0"
 
       - uses: gradle/actions/setup-gradle@v4
 

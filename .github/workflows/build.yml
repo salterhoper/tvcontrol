@@ -48,6 +48,10 @@ jobs:
           java-version: "21"
 
       - uses: android-actions/setup-android@v3
+        with:
+          # Skip the action's default obsolete `tools` package (it no longer
+          # exists and fails); we install the real packages next.
+          packages: ""
 
       - name: Install SDK packages
         run: |

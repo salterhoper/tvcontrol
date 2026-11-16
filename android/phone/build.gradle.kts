@@ -77,6 +77,13 @@ android {
         buildConfig = true
     }
 
+    lint {
+        // Don't let release lintVital pull extra lint tooling over the network
+        // (it 429'd on Maven Central) or gate the sideloaded release APK.
+        checkReleaseBuilds = false
+        abortOnError = false
+    }
+
     packaging {
         resources.excludes += setOf(
             "META-INF/*.kotlin_module",

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Base dark deep blue/black gradient -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="linear"
+                android:angle="135"
+                android:startColor="#06080B"
+                android:centerColor="#0B1017"
+                android:endColor="#080C12" />
+        </shape>
+    </item>
+
+    <!-- Top-Left Radial Aurora Glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="750dp"
+                android:centerX="0.1"
+                android:centerY="0.0"
+                android:startColor="#245EE1C4"
+                android:centerColor="#0C205045"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+
+    <!-- Bottom-Right Deep Violet Radial Glow -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="650dp"
+                android:centerX="0.9"
+                android:centerY="0.9"
+                android:startColor="#1E6E8CFF"
+                android:centerColor="#0A223466"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+
+    <!-- Center Atmosphere Radial Light -->
+    <item>
+        <shape android:shape="rectangle">
+            <gradient
+                android:type="radial"
+                android:gradientRadius="500dp"
+                android:centerX="0.5"
+                android:centerY="0.5"
+                android:startColor="#105EE1C4"
+                android:endColor="#00000000" />
+        </shape>
+    </item>
+</layer-list>

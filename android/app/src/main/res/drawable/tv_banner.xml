@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Android TV home screen banner (320x180). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="320dp"
+    android:height="180dp"
+    android:viewportWidth="320"
+    android:viewportHeight="180">
+
+    <path
+        android:fillColor="#0B0D10"
+        android:pathData="M0,0h320v180h-320z" />
+
+    <!-- the screen -->
+    <path
+        android:fillColor="#14181D"
+        android:pathData="M26,46h168v88h-168z" />
+    <path
+        android:fillColor="#2C6F62"
+        android:pathData="M38,58h144v64h-144z" />
+
+    <!-- the remote -->
+    <path
+        android:fillColor="#14181D"
+        android:pathData="M212,34h84v112h-84z" />
+    <path
+        android:fillColor="#5EE1C4"
+        android:pathData="M254,90m-30,0a30,30 0 1,0 60,0a30,30 0 1,0 -60,0" />
+    <path
+        android:fillColor="#0B0D10"
+        android:pathData="M250,74h8v12h12v8h-12v12h-8v-12h-12v-8h12z" />
+</vector>

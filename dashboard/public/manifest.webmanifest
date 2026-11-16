@@ -1,0 +1,18 @@
+{
+  "name": "TV Control Remote",
+  "short_name": "TV Remote",
+  "description": "Smart TV remote, assistant, and automation controller",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#090b0e",
+  "theme_color": "#090b0e",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192 512x512 any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

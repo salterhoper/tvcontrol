@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="960dp"
+    android:height="540dp"
+    android:viewportWidth="960"
+    android:viewportHeight="540">
+
+    <!-- Atmospheric Waves -->
+    <path
+        android:pathData="M 0,220 Q 240,140 480,240 T 960,180 L 960,540 L 0,540 Z"
+        android:fillColor="#0D1A2533" />
+    
+    <path
+        android:pathData="M 0,280 Q 260,200 520,310 T 960,260 L 960,540 L 0,540 Z"
+        android:fillColor="#09142A38" />
+
+    <path
+        android:pathData="M 0,380 Q 280,320 560,400 T 960,350 L 960,540 L 0,540 Z"
+        android:fillColor="#0B0E1B26" />
+
+    <!-- Ambient Constellation Lines / Particles -->
+    <path
+        android:pathData="M 120,80 L 190,130 L 310,100 L 420,160 L 600,90 L 780,140 L 860,70"
+        android:strokeColor="#185EE1C4"
+        android:strokeWidth="1.5" />
+
+    <!-- Subtle Glow Nodes -->
+    <path
+        android:pathData="M 120,80 m -4,0 a 4,4 0 1,0 8,0 a 4,4 0 1,0 -8,0"
+        android:fillColor="#3A5EE1C4" />
+    <path
+        android:pathData="M 190,130 m -3,0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0"
+        android:fillColor="#3A6E8CFF" />
+    <path
+        android:pathData="M 310,100 m -4,0 a 4,4 0 1,0 8,0 a 4,4 0 1,0 -8,0"
+        android:fillColor="#445EE1C4" />
+    <path
+        android:pathData="M 420,160 m -3,0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0"
+        android:fillColor="#3A6E8CFF" />
+    <path
+        android:pathData="M 600,90 m -5,0 a 5,5 0 1,0 10,0 a 5,5 0 1,0 -10,0"
+        android:fillColor="#445EE1C4" />
+    <path
+        android:pathData="M 780,140 m -3,0 a 3,3 0 1,0 6,0 a 3,3 0 1,0 -6,0"
+        android:fillColor="#3A6E8CFF" />
+    <path
+        android:pathData="M 860,70 m -4,0 a 4,4 0 1,0 8,0 a 4,4 0 1,0 -8,0"
+        android:fillColor="#3A5EE1C4" />
+
+    <!-- Large Ambient Circle in background -->
+    <path
+        android:pathData="M 480,270 m -220,0 a 220,220 0 1,0 440,0 a 220,220 0 1,0 -440,0"
+        android:strokeColor="#0A5EE1C4"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M 480,270 m -320,0 a 320,320 0 1,0 640,0 a 320,320 0 1,0 -640,0"
+        android:strokeColor="#066E8CFF"
+        android:strokeWidth="1.5" />
+</vector>

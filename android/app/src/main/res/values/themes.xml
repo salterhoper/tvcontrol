@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <style name="Theme.TvControl" parent="@android:style/Theme.Material.NoActionBar">
+        <item name="android:windowBackground">@color/tv_bg</item>
+        <item name="android:colorBackground">@color/tv_bg</item>
+        <item name="android:textColorPrimary">@color/tv_text</item>
+        <item name="android:textColorSecondary">@color/tv_text_dim</item>
+        <item name="android:colorAccent">@color/tv_accent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <!-- Base for the Text.* styles below: dot names inherit from it, so it has to exist. -->
+    <style name="Text" />
+
+    <style name="Text.TvTitle">
+        <item name="android:textSize">30sp</item>
+        <item name="android:textStyle">bold</item>
+        <item name="android:textColor">@color/tv_text</item>
+    </style>
+
+    <style name="Text.TvLabel">
+        <item name="android:textSize">15sp</item>
+        <item name="android:textColor">@color/tv_text_dim</item>
+        <item name="android:letterSpacing">0.04</item>
+    </style>
+
+    <style name="Text.TvValue">
+        <item name="android:textSize">20sp</item>
+        <item name="android:textColor">@color/tv_text</item>
+    </style>
+
+    <style name="Text.TvMono">
+        <item name="android:textSize">24sp</item>
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">@color/tv_accent</item>
+        <item name="android:letterSpacing">0.12</item>
+    </style>
+
+    <style name="Text.TvHint">
+        <item name="android:textSize">13sp</item>
+        <item name="android:textColor">@color/tv_text_dim</item>
+        <item name="android:lineSpacingMultiplier">1.25</item>
+    </style>
+
+    <style name="Button.Tv" parent="@android:style/Widget.Material.Button">
+        <item name="android:textSize">16sp</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:minWidth">180dp</item>
+        <item name="android:background">@drawable/bg_button</item>
+        <item name="android:textColor">@color/tv_text</item>
+        <item name="android:paddingStart">20dp</item>
+        <item name="android:paddingEnd">20dp</item>
+    </style>
+</resources>

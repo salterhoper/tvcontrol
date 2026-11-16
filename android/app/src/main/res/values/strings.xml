@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<resources>
+    <string name="app_name">TV Control</string>
+
+    <string name="accessibility_service_label">TV Control remote</string>
+    <string name="accessibility_service_summary">Lets TV Control move focus, press OK and type into search boxes for you.</string>
+    <string name="accessibility_service_description">TV Control uses accessibility to act as a remote control for this device: it moves focus around the screen (directional navigation), presses OK/Back/Home, and types text into fields that are focused. It reads the current screen only to know what is on it (for example the label of the focused item) so your phone or the assistant can make sense of it. Nothing is sent off your local network.</string>
+
+    <string name="status_running">Running</string>
+    <string name="status_stopped">Stopped</string>
+</resources>

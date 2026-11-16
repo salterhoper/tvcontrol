@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<!-- Plain HTTP on the local network is required: the dashboard is served from the TV
+     itself and, optionally, a locally hosted model server (Ollama and friends) may be
+     reachable at a plain http:// address. Nothing is ever sent off-LAN by this app. -->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

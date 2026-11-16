@@ -1,0 +1,271 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootContainer"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/tv_ambient_bg">
+
+    <!-- Ambient Artwork Backdrop -->
+    <ImageView
+        android:id="@+id/ivAmbientArtwork"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/tv_ambient_artwork"
+        android:alpha="0.8"
+        android:importantForAccessibility="no" />
+
+    <!-- Ambient Breathing Glow Layer -->
+    <View
+        android:id="@+id/viewAmbientGlow"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/tv_ambient_bg"
+        android:alpha="0.3"
+        android:importantForAccessibility="no" />
+
+    <!-- Main Content Layout -->
+    <ScrollView
+        android:id="@+id/mainScrollView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:paddingStart="44dp"
+            android:paddingEnd="44dp"
+            android:paddingTop="32dp"
+            android:paddingBottom="32dp">
+
+            <!-- Top Header Bar -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    style="@style/Text.TvTitle" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="10dp"
+                    android:text="HUB"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/tv_accent"
+                    android:background="@drawable/bg_tv_badge" />
+
+                <View
+                    android:layout_width="0dp"
+                    android:layout_height="1dp"
+                    android:layout_weight="1" />
+
+                <!-- Engine Status Badge -->
+                <TextView
+                    android:id="@+id/tvEngineBadge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Engine: Active"
+                    android:textSize="13sp"
+                    android:textColor="@color/tv_ok"
+                    android:background="@drawable/bg_tv_badge"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- Server Status Badge -->
+                <TextView
+                    android:id="@+id/tvStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Server: Online :8787"
+                    android:textSize="13sp"
+                    android:textColor="@color/tv_accent"
+                    android:background="@drawable/bg_tv_badge" />
+            </LinearLayout>
+
+            <!-- Main Split Stage (Left: Connect & QR / Right: Connected Devices & Broadcast) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="24dp"
+                android:baselineAligned="false">
+
+                <!-- Left Column: Quick Connect Card -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="5"
+                    android:orientation="vertical"
+                    android:background="@drawable/bg_tv_card"
+                    android:padding="24dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="CONNECT YOUR DEVICE"
+                        style="@style/Text.TvTitle"
+                        android:textSize="20sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Scan with your phone or open in any browser to control this TV"
+                        style="@style/Text.TvLabel"
+                        android:textSize="13sp" />
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="20dp"
+                        android:gravity="center_vertical">
+
+                        <!-- QR Code Frame -->
+                        <ImageView
+                            android:id="@+id/imgQr"
+                            android:layout_width="180dp"
+                            android:layout_height="180dp"
+                            android:contentDescription="QR code to open dashboard"
+                            android:padding="10dp"
+                            android:background="@drawable/bg_card" />
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginStart="24dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="DASHBOARD URL"
+                                style="@style/Text.TvLabel"
+                                android:textSize="12sp" />
+
+                            <TextView
+                                android:id="@+id/tvUrl"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:text="http://…"
+                                style="@style/Text.TvValue"
+                                android:textSize="17sp"
+                                android:textColor="@color/tv_accent" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="18dp"
+                                android:text="PAIRING PIN"
+                                style="@style/Text.TvLabel"
+                                android:textSize="12sp" />
+
+                            <!-- PIN container -->
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="4dp"
+                                android:orientation="horizontal"
+                                android:gravity="center_vertical"
+                                android:background="@drawable/bg_pin_box">
+
+                                <TextView
+                                    android:id="@+id/tvPin"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:text="000 000"
+                                    style="@style/Text.TvMono"
+                                    android:textSize="22sp" />
+
+                                <Button
+                                    android:id="@+id/btnRotatePin"
+                                    style="@style/Button.Tv"
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="38dp"
+                                    android:layout_marginStart="14dp"
+                                    android:minWidth="90dp"
+                                    android:minHeight="38dp"
+                                    android:textSize="13sp"
+                                    android:text="New PIN" />
+                            </LinearLayout>
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Right Column: Connected Devices & Screen Broadcast Hub -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="5"
+                    android:layout_marginStart="24dp"
+                    android:orientation="vertical">
+
+                    <!-- Connected Devices Card -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:background="@drawable/bg_tv_card"
+                        android:padding="20dp">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="CONNECTED DEVICES"
+                                style="@style/Text.TvTitle"
+                                android:textSize="16sp" />
+
+                            <View
+                                android:layout_width="0dp"
+                                android:layout_height="1dp"
+                                android:layout_weight="1" />
+
+                            <TextView
+                                android:id="@+id/tvConnectedBadge"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="0 Active"
+                                android:textSize="12sp"
+                                android:textColor="@color/tv_text_dim"
+                                android:background="@drawable/bg_tv_badge" />
+                        </LinearLayout>
+
+                        <!-- Dynamic list of connected devices -->
+                        <LinearLayout
+                            android:id="@+id/llConnectedDevices"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:orientation="vertical">
+
+                            <TextView
+                                android:id="@+id/tvNoDevices"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:text="No devices currently active.\nScan the QR code to pair your phone or laptop."
+                                style="@style/Text.TvHint"
+                                android:textSize="13sp"
+                                android:padding="8dp" />
+                        </LinearLayout>
+                    </LinearLayout>
+                </LinearLayout>
+            </LinearLayout>
+        </LinearLayout>
+    </ScrollView>
+</FrameLayout>
